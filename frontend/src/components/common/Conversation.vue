@@ -2,12 +2,27 @@
   <div class="p-4 md:p-6">
     <div class="relative overflow-hidden shadow-md sm:rounded-lg bg-white dark:bg-gray-800">
       <!-- Chat Header -->
-      <div class="p-4 border-b dark:border-gray-700">
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-          {{ activeConversation }} 
-        </h3>
+      <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+            {{ activeConversation }} 
+          </h3>
+          <span class="text-xs px-2 py-1 rounded-full" 
+                :class="chatType === 'private' 
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                  : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'">
+            {{ chatType === 'private' ? 'Private Chat' : 'Group Chat' }}
+          </span>
+        </div>
+              <div v-if="chatType === 'group'" class="flex space-x-2">
+          <!-- Group-specific actions -->
+          <button class="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
-
       <!-- Messages Container -->
       <div class="h-[calc(100vh-300px)] overflow-y-auto p-4 space-y-4">
         <div 
@@ -138,9 +153,11 @@ export default {
          messages : [], 
          activeConversation : "",
          showEmojiPicker : false , 
+         chatType : ""
       }
    }, 
    async mounted()  {
+      await this.determineChatType()
       await this.initializeConversation()
    },
    watch: {
@@ -148,11 +165,16 @@ export default {
     "$route.params.conversation": {
       immediate: true, // Trigger the watcher immediately on component load
       handler() {
+        this.determineChatType() ; 
         this.initializeConversation();
       },
     },
   },
    methods : { 
+      determineChatType() {
+        this.chatType = this.$route.path.includes('/private/') ? 'private' : 'group';
+        console.log(this.chatType);
+      },
       formatDate(date) {
          const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
          return new Date(date).toLocaleDateString(undefined, options);
@@ -166,6 +188,7 @@ export default {
               type: "request",
               action: "loadMessages",
               conversation: this.activeConversation,
+              chatType : this.chatType
           };
          sendMessage(JSON.stringify(request));
 

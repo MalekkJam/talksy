@@ -1,3 +1,1 @@
-UPDATE RequestFriendship
-SET status = 'pending'
-WHERE id = 4;
+delete from friendship where user_id1 = 1 

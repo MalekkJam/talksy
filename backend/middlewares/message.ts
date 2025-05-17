@@ -13,9 +13,7 @@ export const _addMessage = async (socket : AuthenticatedWebSocket ,message : str
     
     try{
         const userID = await find_userId_by_username(socket.username); 
-        console.log("chat =",chat)
         const chat_id = await get_chatID_by_chatName(chat)  ; 
-        console.log("chat_id =",chat_id)
         const _message: Message = {
             chat_id: Number(chat_id), 
             sender_id: Number(userID),

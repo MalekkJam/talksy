@@ -278,7 +278,7 @@ export const addNewConversation = async (ctx : Context) => {
             return ; 
         }
 
-        const { newChat_name ,newChat_type } = await ctx.request.body().value;
+        const { newChat_name  } = await ctx.request.body().value;
 
         try {
             await get_chatID_by_chatName(newChat_name)
@@ -287,7 +287,8 @@ export const addNewConversation = async (ctx : Context) => {
             return
         }
         catch(error) {
-            await add_chat(newChat_name,newChat_type) ; 
+            // only the admin can create Groups 
+            const result = await add_chat(newChat_name,"group") ; 
             const chat_id = await get_chatID_by_chatName(newChat_name)
             await add_admin_to_new_chat(chat_id) ; 
             ctx.response.status = 200 ; 

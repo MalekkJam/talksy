@@ -7,9 +7,10 @@
     <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800 max-h-[90vh] flex flex-col">
       <!-- Modal Header -->
       <div class="flex items-center justify-between p-4 border-b dark:border-gray-700">
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-          Friend Requests
-        </h3>
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+        <span v-if="type === 'sendRequest'">Send To</span>
+        <span v-else>Friend Requests</span>
+      </h3>
         <button @click="close" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -91,7 +92,7 @@ export default {
       this.$emit('accept', this.type, username);
     },
     rejectRequest(username) {
-      this.$emit('reject', this.type,  username);
+      this.$emit('reject', username);
     }
   }
 }

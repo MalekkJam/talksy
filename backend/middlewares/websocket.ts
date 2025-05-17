@@ -4,8 +4,10 @@ import { _addMessage , addReaction } from "./message.ts";
 import { AuthenticatedWebSocket } from "../models/Websocket.ts";
 import { getMessages } from "../models/Message.ts";
 import { find_userId_by_username, find_username_by_id } from "../models/User.ts";
-import { sendRequest , acceptRequest } from "../models/RequestFriendship.ts";
+import { sendRequest , acceptRequest , rejectRequest} from "../models/RequestFriendship.ts";
 import {addFriendship} from "../models/Frienship.ts"
+import { add_chat , get_private_chatid, get_chatID_by_chatName } from "../models/Chat.ts";
+import { add_user_to_chat } from "../models/ChatParticipant.ts";
 
 export const connectionUpgrade = async (clients: Set<WebSocket>, ctx: Context) => {
   if (!ctx.isUpgradable) return;
@@ -43,8 +45,18 @@ export const connectionUpgrade = async (clients: Set<WebSocket>, ctx: Context) =
       const { type,action } = JSON.parse(event.data.toString()); 
       const authSocket = socket as AuthenticatedWebSocket;
         if (type == "message") {
-          const {conversation } = JSON.parse(event.data.toString())
-          _addMessage(authSocket,action,conversation)
+          const {conversation , chatType} = JSON.parse(event.data.toString())
+          let chat_id
+          if (chatType == "private" ) {
+              // Searching for the chat id at first 
+            const my_id =  await find_userId_by_username(username) 
+            const friend_id = await find_userId_by_username(conversation) 
+
+            chat_id = await get_private_chatid(my_id,friend_id)
+          }
+          else {
+            _addMessage(authSocket,action,conversation)
+          }
           broadcastMessage(clients,authSocket.username,action,conversation)
         }
         else if (type =="reaction") {
@@ -56,35 +68,50 @@ export const connectionUpgrade = async (clients: Set<WebSocket>, ctx: Context) =
           switch (action) {
      
               case "loadMessages": {
-                  const {conversation} = JSON.parse(event.data.toString())
-                  const messages = await getMessages(conversation) 
-                  // join the two tables to get a table containing usernames and messages
-                  const fullMessages = await Promise.all(
-                    messages.map(async (message) => {
-                      let username = "unknown";
-                      try {
-                        const result = await find_username_by_id(message.sender_id);
-                        if (result && result.length > 0) {
-                          username = result[0].username;
+                  const {conversation , chatType} = JSON.parse(event.data.toString())
+                  let chat_id
+                  if (chatType == "private" ) {
+                     // Searching for the chat id at first 
+                    const my_id =  await find_userId_by_username(username) 
+                    const friend_id = await find_userId_by_username(conversation) 
+
+                    chat_id = await get_private_chatid(my_id,friend_id)
+                  }
+                  else {
+                    chat_id = await get_chatID_by_chatName(conversation) ; 
+                  }
+
+                    const messages = await getMessages(chat_id!) 
+                    // join the two tables to get a table containing usernames and messages
+                    const fullMessages = await Promise.all(
+                      messages.map(async (message) => {
+                        let username = "unknown";
+                        try {
+                          const result = await find_username_by_id(message.sender_id);
+                          if (result && result.length > 0) {
+                            username = result[0].username;
+                          }
+                        } catch (_error) {
+                          // Handle error silently, username remains "unknown"
                         }
-                      } catch (_error) {
-                        // Handle error silently, username remains "unknown"
-                      }
-                      return {
-                        username: username,
-                        content: message.content,
-                        date: message.timestamp,
-                      };
-                    })
-                  );
-                  socket.send(JSON.stringify({
+                        return {
+                          username: username,
+                          content: message.content,
+                          date: message.timestamp,
+                        };
+                      })
+                  );                   
+
+                    socket.send(JSON.stringify({
                     type : "response" , 
                     action : "loadMessages", 
                     conversation : conversation, 
                     data : fullMessages
                   }))
                   break;
-              }
+                  }
+                  
+                 
               case "sendRequest": {
                 try {const { target } = JSON.parse(event.data.toString());
                 const sender_id = await find_userId_by_username(username) ; 
@@ -109,12 +136,30 @@ export const connectionUpgrade = async (clients: Set<WebSocket>, ctx: Context) =
 
                   await acceptRequest(sender_id,target_id) ; 
                   await addFriendship(sender_id,target_id) ; 
+                  const newChatId = await add_chat("conversation","private") ; 
+                  await add_user_to_chat(newChatId,target_id) ; 
+                  await add_user_to_chat(newChatId,sender_id) ; 
                 }catch (error) {/* Silently managing the errors */}
-
+                console.log("here");
                 socket.send(JSON.stringify({
                   type : "response" , 
                   action : "manageRequest" , 
                   status : 200 
+                }))
+                break ; 
+              }
+
+              case "rejectRequest" : {
+               try{ const {sender} = JSON.parse(event.data.toString()) ; 
+                const sender_id = await find_userId_by_username(sender) ; 
+                const user_id = await find_userId_by_username(username) ; 
+                await rejectRequest(sender_id,user_id) ; 
+                }
+                catch(error) {}
+                socket.send(JSON.stringify({
+                  type : "response" , 
+                  action : "rejectRequest",
+                  status : 200
                 }))
                 break ; 
               }

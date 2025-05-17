@@ -20,12 +20,11 @@ export const addMessage = async (message : Message) => {
     }
 }
 
-export const getMessages = async(conversation : string ) => {
+export const getMessages = async(chat_id : string ) => {
     const query = "SELECT sender_id,content,timestamp  FROM Message WHERE chat_id =?" 
 
     try {
-        const chat_name = await get_chatID_by_chatName(conversation);
-        const result = db.prepare(query).all(chat_name) as {sender_id : number, content : string, timestamp : Date}[]; 
+        const result = db.prepare(query).all(chat_id) as {sender_id : number, content : string, timestamp : Date}[]; 
         return result
     }catch(error) {
         throw (error)
@@ -43,3 +42,4 @@ export const getMessageId = async (chat_id: string, sender_id : string, content 
         throw error 
     }
 }
+

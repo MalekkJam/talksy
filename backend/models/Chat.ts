@@ -1,12 +1,12 @@
 import db from "../config/database.ts";
 import { find_userId_by_username } from "./User.ts";
 
-export const _getConversations = async (username : string) : Promise<string[]> => {
-    const query = "SELECT chat_name FROM Chat, ChatParticipant WHERE Chat.chat_id = ChatParticipant.chat_id AND ChatParticipant.user_id = ?" ; 
+export const _getConversations = async (username : string, chat_type : string) : Promise<string[]> => {
+    const query = "SELECT chat_name FROM Chat, ChatParticipant WHERE Chat.chat_id = ChatParticipant.chat_id AND ChatParticipant.user_id = ? AND Chat.chat_type = ?" ; 
     
     try {
         const user_id = await find_userId_by_username(username) ; 
-        const result = await db.prepare(query).all(user_id) as { chat_name: string }[]; ; 
+        const result = await db.prepare(query).all(user_id,chat_type) as { chat_name: string }[]; ; 
         return result.map(row => row.chat_name);
     } 
     catch (error) {
@@ -39,7 +39,7 @@ export const get_Nb_Conversations = async () => {
 }
 
 export const get_All_chats = async () => {
-    const query = "SELECT chat_name, chat_type, created_at FROM Chat"
+    const query = "SELECT chat_name, chat_type, created_at FROM Chat WHERE chat_type = 'group'"
 
     try {
         const result = await db.prepare(query).all()  ; 
@@ -80,10 +80,30 @@ export const add_chat = async(chat_name : string , chat_type : string) => {
     const query = "INSERT INTO Chat(chat_name,chat_type) VALUES (?,?)"
 
     try {
-        const result = await db.prepare(query).all(chat_name,chat_type)
-        return result
+        await db.prepare(query).all(chat_name,chat_type)
+        const result = db.prepare("SELECT LAST_INSERT_ROWID() AS id;").get() as { id: string };
+        return result.id; 
     }catch (error) {
         console.error("Error while adding chat to db")
         throw error 
     }
 }
+
+export const get_private_chatid = async (my_id : string ,friend_id : string) => {
+     const query = `
+        SELECT cp.chat_id
+        FROM ChatParticipant cp
+        JOIN Chat c ON cp.chat_id = c.chat_id
+        WHERE c.chat_type = 'private'
+          AND cp.user_id IN (?, ?)
+        GROUP BY cp.chat_id
+        HAVING COUNT(DISTINCT cp.user_id) = 2
+    `;
+    try {
+        const result = await db.prepare(query).all(my_id, friend_id) as { chat_id: string }[];
+        return result.length > 0 ? result[0].chat_id : null;
+    } catch (error) {
+        console.error("Error fetching private chat id");
+        throw error;
+    }
+} 

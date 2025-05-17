@@ -21,20 +21,6 @@
               >
             </div>
   
-            <div>
-              <label for="chatType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Chat Type
-              </label>
-              <select
-                v-model="newChat.type"
-                id="chatType"
-                required
-                class="w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="private">Private</option>
-                <option value="group">Group</option>
-              </select>
-            </div>
   
             <ErrorMessage v-if="showErrorMessage" :message="errorMessage" class="mt-2 text-red-500" />
             <div class="flex justify-end space-x-3">
@@ -88,7 +74,6 @@
             credentials: "include",
             body: JSON.stringify({
               newChat_name: this.newChat.name,
-              newChat_type: this.newChat.type
             })
           });
   
@@ -117,7 +102,6 @@
       resetForm() {
         this.newChat = {
           name: '',
-          type: 'private'
         };
         this.showErrorMessage = false 
       }

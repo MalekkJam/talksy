@@ -9,7 +9,7 @@
         Send Friend Request
       </button>
       <button 
-        @click="showPendingRequests"
+        @click="fetchFriendRequests"
         class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded transition-colors"
       >
         Friend Requests
@@ -17,6 +17,10 @@
     </div>
 
     <!-- Existing Conversations List -->
+      <div class="border-b border-gray-700">
+      <h3 class="text-gray-400 uppercase text-xs font-semibold px-4 py-2">
+        Rooms
+      </h3>
     <ul>
       <li 
         @click="changeConversation(conversation)" 
@@ -27,6 +31,22 @@
         {{ conversation }}
       </li>
     </ul>
+    </div>
+    <div>
+      <h3 class="text-gray-400 uppercase text-xs font-semibold px-4 py-2">
+        My Friends
+      </h3>
+        <ul>
+    <li 
+      v-for="friend in friendsList"
+      @click="changeConversation(friend.username)"
+      class="text-white p-4 hover:bg-gray-700 cursor-pointer transition-colors"
+      :key="friend"
+    >
+      {{ friend.username }}
+    </li>
+  </ul>
+    </div>
   </nav>
 <FriendPopup
   :isOpen="showRequestModal"
@@ -52,14 +72,16 @@ import { initWebSocket, sendMessage  } from '@/services/websocket.service';
             type :"",
             url : "http://localhost:3000",
             showRequestModal : false , 
+            friendsList : [], 
          };
       },
       async mounted() {
          this.fetchChats() 
+         this.fetchFriends()
       },
       methods : {
          fetchChats() {
-            fetch(this.url+"/getConversations",{
+            fetch(this.url+"/getGroupConversations",{
             method : "GET",
             mode : "cors",
             headers : {
@@ -73,7 +95,14 @@ import { initWebSocket, sendMessage  } from '@/services/websocket.service';
          })
          }, 
          changeConversation(conversation) {
-            this.$router.push("/conversation/"+conversation) 
+            const isGroupChat = this.conversations.includes(conversation);
+            
+            if (isGroupChat) {
+               this.$router.push("/group/" + conversation);
+            } else {
+               this.$router.push("/private/" + conversation);
+            }
+
          }, 
          fetchNonFriendUsers() {
             fetch(this.url+"/fetchNonFriendUsers",{
@@ -95,7 +124,6 @@ import { initWebSocket, sendMessage  } from '@/services/websocket.service';
          }, 
          async handleAccept(type,username) {
                const socket = await initWebSocket() ; 
-               console.log(type,username);
                const request = {
                   type : "request" , 
                   action : type ,
@@ -116,16 +144,33 @@ import { initWebSocket, sendMessage  } from '@/services/websocket.service';
                      response.action == "manageRequest" && 
                      response.status == 200
                   ){
-                     this.showPendingRequests()
+                     this.fetchFriendRequests()
                   }
                   
-               }
-
-
-
-               
+               }             
          }, 
-         showPendingRequests() {
+         async handleReject(username) {
+            const socket = await initWebSocket() ; 
+               const request = {
+                  type : "request" , 
+                  action : "rejectRequest" ,
+                  sender : username
+               }
+               
+               sendMessage(JSON.stringify(request)) ; 
+
+               socket.onmessage = (event) => {
+                  const response = JSON.parse(event.data) ; 
+                  if (response.type == "response" && 
+                     response.action == "rejectRequest" && 
+                     response.status == 200 
+                  ) {
+                     this.fetchFriendRequests()
+                  }
+            
+               }
+         },
+         fetchFriendRequests() {
              fetch(this.url+"/fetchFriendshipRequests",{
                method : "GET",
                mode : "cors" , 
@@ -139,9 +184,23 @@ import { initWebSocket, sendMessage  } from '@/services/websocket.service';
                this.type = "manageRequest"; 
                this.showRequestModal = true ; 
              })
+         }, 
+         fetchFriends() {
+            fetch(this.url +"/getMyFriends", {
+               method :"GET" , 
+               mode : "cors" , 
+               headers : {
+                  "Content-Type" : "Application/json"
+               }, 
+               credentials :"include"
+            }).then(async (response) => {
+               const data = await response.json() 
+               this.friendsList = data
+               console.log(this.friendsList);
+            })
          }
       }
    }
 
 
-</script>
+</script>   

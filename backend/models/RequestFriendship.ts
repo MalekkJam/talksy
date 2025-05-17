@@ -68,3 +68,15 @@ export const acceptRequest = (sender_id : string , target_id : string ) => {
         throw error 
     }
 }
+
+export const rejectRequest = (sender_id : string , user_id : string ) => {
+    const query = "UPDATE RequestFriendship SET status = 'accepted' WHERE sender_id = ? AND receiver_id = ? AND status = 'pending';"
+
+    try {
+        const result = db.prepare(query).run(sender_id,user_id) ; 
+        return result 
+    }catch (error) {
+        console.error("Error while rejecting the invitation"); 
+        throw error 
+    }
+}
